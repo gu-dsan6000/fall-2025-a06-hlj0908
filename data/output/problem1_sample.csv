@@ -1,0 +1,11 @@
+log_entry,log_level
+17/06/08 12:14:35 INFO executor.CoarseGrainedExecutorBackend: Got assigned task 16627,INFO
+17/06/09 18:44:34 INFO storage.BlockManager: Found block rdd_12701_26 locally,INFO
+"17/06/08 21:10:59 INFO storage.MemoryStore: Block broadcast_14847 stored as values in memory (estimated size 10.4 KB, free 1672.3 KB)",INFO
+17/06/09 12:48:59 INFO storage.BlockManager: Removing RDD 10011,INFO
+17/06/08 10:39:01 INFO executor.Executor: Finished task 29.0 in stage 693.0 (TID 27749). 2170 bytes result sent to driver,INFO
+17/06/09 21:15:15 INFO executor.Executor: Finished task 35.0 in stage 898.0 (TID 37114). 2135 bytes result sent to driver,INFO
+"17/06/09 09:14:14 INFO python.PythonRunner: Times: total = 40, boot = -5, init = 45, finish = 0",INFO
+17/06/08 11:37:42 INFO storage.BlockManager: Found block rdd_705_19 locally,INFO
+"17/06/08 21:39:28 INFO spark.CacheManager: Partition rdd_30147_0 not found, computing it",INFO
+"17/06/08 21:46:55 INFO storage.MemoryStore: Block broadcast_18463 stored as values in memory (estimated size 11.0 KB, free 2.8 MB)",INFO
