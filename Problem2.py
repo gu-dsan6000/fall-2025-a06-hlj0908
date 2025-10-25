@@ -11,12 +11,12 @@ from pyspark.sql.functions import (
     try_to_timestamp, when, min as spark_min, max as spark_max, countDistinct
 )
 
-
 # save single CSV
 def write_single_csv_spark(df, path):
     tmp = path + "_tmp"
     df.coalesce(1).write.option("header", True).mode("overwrite").csv(tmp)
     part = None
+    # find the part file
     for f in os.listdir(tmp):
         if f.startswith("part-") and f.endswith(".csv"):
             part = f
@@ -29,7 +29,7 @@ def write_single_csv_spark(df, path):
     shutil.rmtree(tmp, ignore_errors=True)
 
 
-# ---------- main Spark job ----------
+# main Spark job 
 def run_spark(master, input_dir, output_dir):
     print(f"[INFO] Using Spark master: {master}")
     print(f"[INFO] Reading logs recursively from: {input_dir}")
@@ -41,7 +41,7 @@ def run_spark(master, input_dir, output_dir):
         .getOrCreate()
     )
 
-    # 递归读取日志
+    # read logs recursively 
     logs = (
         spark.read
         .option("recursiveFileLookup", "true")
@@ -56,7 +56,7 @@ def run_spark(master, input_dir, output_dir):
         concat(lit("application_"), col("cluster_id"), lit("_"), col("app_number"))
     )
 
-    # 提取日志时间戳 (支持 yy/MM/dd HH:mm:ss)
+    # Extract log timestamps (supports yy/MM/dd HH:mm:ss)
     logs = logs.withColumn(
         "timestamp_raw",
         regexp_extract(col("value"), r"(\d{2}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})", 1)
@@ -64,14 +64,14 @@ def run_spark(master, input_dir, output_dir):
 
     logs = logs.withColumn("ts", try_to_timestamp(col("timestamp_raw"), lit("yy/MM/dd HH:mm:ss")))
 
-    # 过滤有效记录
+    # Filter valid records
     logs = logs.filter(
         (col("ts").isNotNull()) &
         (col("cluster_id") != "") &
         (col("app_number") != "")
     )
 
-    # 计算每个 application 起止时间
+    # Calculate start and end times for each application
     app_times = (
         logs.groupBy("cluster_id", "application_id", "app_number")
             .agg(
@@ -81,7 +81,7 @@ def run_spark(master, input_dir, output_dir):
             .orderBy(col("cluster_id"), col("app_number").cast("int"))
     )
 
-    # 每个 cluster 汇总
+    # Cluster summary statistics
     cluster_summary = (
         app_times.groupBy("cluster_id")
                  .agg(
@@ -92,6 +92,7 @@ def run_spark(master, input_dir, output_dir):
                  .orderBy(col("num_applications").desc())
     )
 
+    # Output results
     os.makedirs(output_dir, exist_ok=True)
     timeline_csv = os.path.join(output_dir, "problem2_timeline.csv")
     summary_csv = os.path.join(output_dir, "problem2_cluster_summary.csv")
@@ -105,7 +106,7 @@ def run_spark(master, input_dir, output_dir):
     write_single_csv_spark(cluster_summary, summary_csv)
     print(f"[INFO] Saved cluster summary: {summary_csv}")
 
-    # 统计结果
+    # Statistics
     summary_pd = cluster_summary.toPandas()
     total_clusters = int(summary_pd.shape[0])
     total_apps = int(summary_pd["num_applications"].sum()) if total_clusters > 0 else 0
@@ -120,7 +121,7 @@ def run_spark(master, input_dir, output_dir):
             f.write(f"  Cluster {row['cluster_id']}: {int(row['num_applications'])} applications\n")
     print(f"[INFO] Saved stats: {stats_txt}")
 
-    # ---------- 可视化 ----------
+    # Visualization
     if total_clusters > 0:
         plt.figure(figsize=(10, 6))
         plt.bar(summary_pd["cluster_id"].astype(str), summary_pd["num_applications"].astype(int))
@@ -132,7 +133,7 @@ def run_spark(master, input_dir, output_dir):
         plt.savefig(bar_png)
         print(f"[INFO] Saved bar chart: {bar_png}")
 
-        # 密度图 (largest cluster)
+        # Density plot (largest cluster)
         app_df = app_times.toPandas()
         app_df["duration"] = (pd.to_datetime(app_df["end_time"]) - pd.to_datetime(app_df["start_time"])).dt.total_seconds()
         largest_cluster = summary_pd.sort_values("num_applications", ascending=False).iloc[0]["cluster_id"]
